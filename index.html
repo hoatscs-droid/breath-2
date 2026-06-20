@@ -57,8 +57,8 @@
   .pname b{color:var(--text);font-weight:600}
   .how{text-align:center;font-size:12px;line-height:1.55;color:rgba(232,234,255,.62);margin:0 auto 8px;max-width:312px}
   .note{text-align:center;font-size:11px;line-height:1.45;color:rgba(232,234,255,.3);margin:0 auto 16px;max-width:300px;font-style:italic}
-  .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
-  .tab{flex:1;max-width:120px;padding:9px 0;border:1px solid var(--hair);border-radius:999px;background:transparent;color:rgba(232,234,255,.6);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .35s var(--ease);font-weight:600}
+  .tabs{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
+  .tab{flex:1;min-width:0;max-width:112px;padding:9px 0;border:1px solid var(--hair);border-radius:999px;background:transparent;color:rgba(232,234,255,.6);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .35s var(--ease);font-weight:600;white-space:nowrap}
   .tab[aria-selected="true"]{color:#0c0f1b;background:var(--body);border-color:transparent}
   .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:16px}
   .chip{padding:8px 14px;border:1px solid var(--hair);border-radius:12px;background:transparent;color:rgba(232,234,255,.62);cursor:pointer;text-align:center;line-height:1.25;transition:all .3s var(--ease)}
@@ -92,7 +92,7 @@
   .rb{width:46px;height:46px;border-radius:50%;border:1px solid var(--hair);background:rgba(220,224,255,.04);color:var(--text);cursor:pointer;font-size:15px;display:grid;place-items:center;transition:transform .25s var(--ease)}
   .rb:active{transform:scale(.92)}
 
-  .gate{position:absolute;inset:0;z-index:9;background:rgba(5,3,15,.86);backdrop-filter:blur(6px);display:none;flex-direction:column;justify-content:center;padding:32px 28px}
+  .gate{position:absolute;inset:0;z-index:9;background:rgba(5,3,15,.86);backdrop-filter:blur(6px);display:none;flex-direction:column;justify-content:center;padding:32px 28px;overflow-y:auto}
   .gate.on{display:flex}
   .gate h3{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:21px;color:var(--text);margin-bottom:14px}
   .gate p{font-size:13px;line-height:1.65;color:rgba(232,234,255,.66);margin-bottom:10px}
@@ -110,6 +110,13 @@
   .sheet-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--hair);background:transparent;color:rgba(232,234,255,.7);font-size:18px;line-height:1;cursor:pointer}
 
   @media (prefers-reduced-motion: reduce){.orb::after{animation:none}}
+  @media (max-height:760px){
+    .orb{width:min(44vw,188px)}
+    .cue .word{font-size:22px}.cue .count{font-size:26px;min-height:28px}.cue .hint{margin-top:7px}
+    .panel{padding:0 20px calc(12px + env(safe-area-inset-bottom))}
+    .pname{margin-bottom:6px}.how{font-size:11.5px;line-height:1.38;margin-bottom:5px}.note{font-size:9.8px;line-height:1.28;margin-bottom:9px}
+    .tabs{margin-bottom:9px}.chips{margin-bottom:9px}.chip{padding:7px 12px}.row{margin-bottom:10px}.begin{padding:13px}
+  }
 </style>
 </head>
 <body>
@@ -151,9 +158,9 @@
   </div>
 
   <div class="gate" id="gate">
-    <h3>Before you begin</h3>
-    <p>Activating practices use fast breathing and breath holds. They can make you lightheaded.</p>
-    <ul>
+    <h3 id="gateTitle">Before you begin</h3>
+    <p id="gateBody">Activating practices use fast breathing and breath holds. They can make you lightheaded.</p>
+    <ul id="gateList">
       <li>Sit or lie down — never in or near water, or while driving or standing.</li>
       <li>Stop if you feel dizzy, faint, or short of breath. That feeling is the signal to rest.</li>
       <li>Skip these if you are pregnant, or have cardiovascular, respiratory, or seizure conditions.</li>
@@ -164,7 +171,9 @@
 
 <script>
 /* ---------- patterns ---------- */
-function tummoPhases(){const a=[];for(let i=0;i<10;i++){a.push(["in",1.8]);a.push(["out",1.0]);}a.push(["in",3]);a.push(["holdF",12]);a.push(["out",5]);return a;}
+function tummoPhases(){const a=[];for(let i=0;i<10;i++){a.push(["in",1.3]);a.push(["out",0.8]);}a.push(["in",3]);a.push(["holdF",12]);a.push(["out",5]);return a;}
+function connectedBlock(inSec,outSec,cycles,restSec){const a=[];for(let i=0;i<cycles;i++){a.push(["in",inSec]);a.push(["out",outSec]);}if(restSec)a.push(["rest",restSec]);return a;}
+function connectedRound(inSec,outSec,activeSec,restSec){return connectedBlock(inSec,outSec,Math.max(1,Math.round(activeSec/(inSec+outSec))),restSec);}
 const CATS={
   calm:{label:"Calm",tag:"settle the nervous system",
     note:"Slow paced breathing has solid evidence for raising heart-rate variability and easing acute stress.",
@@ -185,10 +194,17 @@ const CATS={
     vars:{"--bg-0":"#0c1006","--bg-1":"#070803","--core":"#fff0b0","--body":"#ffc23a","--rim":"#4e3a08","--glow":"#9fd83a","--text":"#fff4cf","--eyebrow":"#d9c98a"},
     patterns:[
       {id:"fire",n:"Breath Of Fire",d:"rapid · even",how:"A rapid, even breath through the nose, driven from the belly with the emphasis on a quick exhale. Strongly energizing — keep it brief, a minute or two.",ph:[["in",.9],["out",.9]],range:[.78,1]},
-      {id:"tummo",n:"Tummo",d:"rounds · vase hold",how:"Rounds of forceful breathing to build inner heat, each round ending in a held breath drawn down to the belly. An activating practice — please read the safety note first.",ph:tummoPhases(),range:[.5,1]},
-      {id:"bellows",n:"Bellows",d:"1.2 · 1.2",how:"Full, brisk breaths in and out through the nose to raise heat and alertness. Ease off the moment you feel lightheaded.",ph:[["in",1.2],["out",1.2]],range:[.72,1]}]}
+      {id:"tummo",n:"Tummo",d:"rounds · vase hold",how:"Rounds of forceful breathing to build inner heat, each round ending in a held breath drawn down to the belly. An activating practice — please read the safety note first.",ph:tummoPhases(),range:[.5,1],rounds:true},
+      {id:"bellows",n:"Bellows",d:"1.2 · 1.2",how:"Full, brisk breaths in and out through the nose to raise heat and alertness. Ease off the moment you feel lightheaded.",ph:[["in",1.2],["out",1.2]],range:[.72,1]}]},
+  holotropic:{label:"Holotropic",tag:"non-ordinary states through breath",
+    note:"High-ventilation breathing deliberately lowers carbon dioxide to bring on a non-ordinary, sometimes dreamlike or euphoric state. That state is a real but temporary shift in body chemistry — not a drug, and not therapy. The full practice is normally done over hours with a trained facilitator; this is a short, gentle solo taste. Read the safety screen first.",
+    vars:{"--bg-0":"#0a0618","--bg-1":"#05030f","--core":"#e8d6ff","--body":"#9a6cff","--rim":"#2a1466","--glow":"#7b4cff","--text":"#ece0ff","--eyebrow":"#b49ad0"},
+    patterns:[
+      {id:"connected",n:"Connected",d:"3 · 3",how:"Continuous, connected breathing with no pause between in and out — deep and a little faster than normal. A gentle on-ramp.",ph:[["in",3],["out",3]],range:[.54,.96],safety:"holotropic",padAudio:true},
+      {id:"holotropic",n:"Holotropic",d:"2 · 2 · rest",how:"Rounds of faster, fuller breathing followed by a still pause, where the floaty, tingling sensations usually settle in.",ph:connectedRound(2,2,150,60),range:[.54,.98],rounds:true,safety:"holotropicAlways",padAudio:true,maxMin:12},
+      {id:"expansive",n:"Expansive",d:"1.5 · 1.5 · rest",how:"The most active round-based breathing. Strong sensations are common. Keep it short, lie down, and stop the moment it's too much.",ph:connectedRound(1.5,1.5,120,60),range:[.55,1],rounds:true,safety:"holotropicAlways",padAudio:true,maxMin:8,noInf:true}]}
 };
-const WORDS={in:"breathe in",holdF:"hold",out:"breathe out",holdE:"hold"};
+const WORDS={in:"breathe in",holdF:"hold",out:"breathe out",holdE:"hold",rest:"rest"};
 const DURS=[3,5,10,"inf"];
 
 /* ---------- state ---------- */
@@ -201,6 +217,7 @@ function supportsHaptics(){return typeof navigator.vibrate==="function";}
 let cat="calm",pat=CATS.calm.patterns[0],durMin=5;
 let running=false,paused=false,safetyOK=false;
 let phases=[],pIdx=0,pStart=0,sessStart=0,pauseAt=0;
+let pendingFinish=false,roundCount=1;
 let breathOpen=0,prevOpen=0,prevDir=0,idleT=0,lastNow=0;
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 let audioScheduleUntil=0,bgTimer=0,wakeLock=null,lastFrameSample=0,slowFrameMs=0,visualAutoQuietUntil=0;
@@ -222,14 +239,26 @@ addEventListener("resize",resize);addEventListener("orientationchange",resize);
 /* ---------- controls ---------- */
 function paintCat(){const c=CATS[cat];Object.entries(c.vars).forEach(([k,v])=>stage.style.setProperty(k,v));stage.dataset.cat=cat;$("ebCat").textContent=c.label;$("ebTag").textContent=c.tag;refreshInfo();updateAmbientTone();}
 function refreshInfo(){$("how").textContent=pat.how||"";$("note").textContent=CATS[cat].note;}
-function buildTabs(){const t=$("tabs");t.innerHTML="";Object.keys(CATS).forEach(k=>{const b=document.createElement("button");b.className="tab";b.textContent=CATS[k].label;b.setAttribute("role","tab");b.setAttribute("aria-selected",k===cat);b.onclick=()=>{cat=k;pat=CATS[k].patterns[0];safetyOK=false;paintCat();buildTabs();buildChips();setPname();};t.appendChild(b);});}
-function buildChips(){const c=$("chips");c.innerHTML="";CATS[cat].patterns.forEach(p=>{const b=document.createElement("button");b.className="chip";b.setAttribute("aria-pressed",p.id===pat.id);b.innerHTML='<span class="n">'+p.n+'</span><span class="d">'+p.d+'</span>';b.onclick=()=>{pat=p;buildChips();setPname();refreshInfo();};c.appendChild(b);});}
-function buildDur(){const d=$("dur");d.innerHTML="";DURS.forEach(v=>{const b=document.createElement("button");if(v==="inf")b.innerHTML='<span class="inf">∞</span>';else b.textContent=v;b.setAttribute("aria-pressed",(v==="inf"&&durMin==="inf")||v===durMin);b.onclick=()=>{durMin=v;buildDur();};d.appendChild(b);});}
+function buildTabs(){const t=$("tabs");t.innerHTML="";Object.keys(CATS).forEach(k=>{const b=document.createElement("button");b.className="tab";b.textContent=CATS[k].label;b.setAttribute("role","tab");b.setAttribute("aria-selected",k===cat);b.onclick=()=>{cat=k;pat=CATS[k].patterns[0];safetyOK=false;ensureDurAllowed();paintCat();buildTabs();buildChips();buildDur();setPname();};t.appendChild(b);});}
+function buildChips(){const c=$("chips");c.innerHTML="";CATS[cat].patterns.forEach(p=>{const b=document.createElement("button");b.className="chip";b.setAttribute("aria-pressed",p.id===pat.id);b.innerHTML='<span class="n">'+p.n+'</span><span class="d">'+p.d+'</span>';b.onclick=()=>{pat=p;safetyOK=false;ensureDurAllowed();buildChips();buildDur();setPname();refreshInfo();};c.appendChild(b);});}
+function durChoices(){let ds=pat.maxMin===8?[3,5,8,"inf"]:DURS.slice();return ds.filter(v=>!(v==="inf"&&pat.noInf)&&(v==="inf"||!pat.maxMin||v<=pat.maxMin));}
+function ensureDurAllowed(){const ds=durChoices();if(ds.some(v=>(v==="inf"&&durMin==="inf")||v===durMin))return;const nums=ds.filter(v=>v!=="inf");durMin=nums[nums.length-1]||ds[0];}
+function buildDur(){ensureDurAllowed();const d=$("dur");d.innerHTML="";durChoices().forEach(v=>{const b=document.createElement("button");if(v==="inf")b.innerHTML='<span class="inf">∞</span>';else b.textContent=v;b.setAttribute("aria-pressed",(v==="inf"&&durMin==="inf")||v===durMin);b.onclick=()=>{durMin=v;buildDur();};d.appendChild(b);});}
 function syncAmbientNote(){const n=$("ambientNote");if(n)n.classList.toggle("on",!ambientOn&&needsPlaybackFloor());}
 function buildAmbient(){const a=$("ambient");a.innerHTML="";["on","off"].forEach(v=>{const b=document.createElement("button");b.textContent=v==="on"?"On":"Off";b.setAttribute("aria-pressed",(v==="on")===ambientOn);b.onclick=()=>{ambientOn=v==="on";writeStore(STORE.ambient,String(ambientOn));buildAmbient();updateAmbientBed();};a.appendChild(b);});syncAmbientNote();}
 function setVisualMode(mode,auto){if(!VISUAL_MODES.includes(mode))mode="full";visualMode=mode;stage.dataset.visual=mode;if(auto){writeStore(STORE.autoVisual,"true");}else{writeStore(STORE.visual,mode);writeStore(STORE.autoVisual,"false");}buildVisuals();}
 function buildVisuals(){stage.dataset.visual=visualMode;const v=$("visuals");v.innerHTML="";[{id:"full",label:"Full"},{id:"minimal",label:"Min"},{id:"off",label:"Off"}].forEach(opt=>{const b=document.createElement("button");b.textContent=opt.label;b.setAttribute("aria-pressed",opt.id===visualMode);b.onclick=()=>{writeStore(STORE.autoVisual,"false");visualAutoQuietUntil=performance.now()+60000;setVisualMode(opt.id,false);};v.appendChild(b);});}
 function setPname(){$("pname").innerHTML='<b>'+pat.n+'</b> &nbsp;·&nbsp; '+pat.d;}
+const GATE_COPY={
+  energy:{title:"Before you begin",body:"Activating practices use fast breathing and breath holds. They can make you lightheaded.",items:["Sit or lie down — never in or near water, or while driving or standing.","Stop if you feel dizzy, faint, or short of breath. That feeling is the signal to rest.","Skip these if you are pregnant, or have cardiovascular, respiratory, or seizure conditions."],go:"I understand — begin"},
+  holotropic:{title:"Read before you begin",body:"This is high-ventilation breathing. It can bring on dizziness, tingling, tightness in the hands (harmless and temporary), strong emotions, and in some people, fainting.",items:["Lie down on a soft surface. Never in or near water, never standing, never while driving.","Don't do this if you are pregnant, or have heart, blood-pressure, respiratory, seizure, or eye-pressure conditions.","Skip it if you have a history of psychosis, bipolar, or significant trauma, or take psychiatric medication, unless a doctor has cleared it — intense breathing can surface overwhelming states.","Keep water nearby. The first few times, have someone you trust within earshot.","You're always in control: open your eyes and breathe normally to come back. Stop the moment anything feels wrong."],go:"I've read this — begin"}
+};
+let activeGateMode=null;
+function safetyKind(){return pat.safety||(CATS[cat].safety?"energy":null);}
+function gateMode(kind){return kind==="holotropic"||kind==="holotropicAlways"?"holotropic":"energy";}
+function needsSafetyGate(){const k=safetyKind();if(!k)return false;if(k==="holotropicAlways")return true;return !safetyOK;}
+function renderGate(mode){const g=GATE_COPY[mode]||GATE_COPY.energy;$("gateTitle").textContent=g.title;$("gateBody").textContent=g.body;$("gateList").innerHTML=g.items.map(i=>"<li>"+i+"</li>").join("");$("gateGo").textContent=g.go;}
+function openSafetyGate(){activeGateMode=safetyKind();renderGate(gateMode(activeGateMode));$("gate").classList.add("on");}
 
 /* ---------- audio (synthesized, no assets) ---------- */
 let actx=null,master=null,cueBus=null,mediaDest=null,directOut=false,_noise=null,_keepAliveWav=null,ambient=null;
@@ -239,7 +268,8 @@ const AUDIO_SCHEDULE_AHEAD=25000;
 const AMBIENT={
   calm:{freq:[98,146.83,196],filter:620,gain:0.024,lfo:0.045,depth:80},
   intimacy:{freq:[123.47,185,246.94],filter:760,gain:0.022,lfo:0.038,depth:95},
-  energy:{freq:[130.81,196,261.63],filter:980,gain:0.018,lfo:0.055,depth:120}
+  energy:{freq:[130.81,196,261.63],filter:980,gain:0.018,lfo:0.055,depth:120},
+  holotropic:{freq:[82.41,123.47,185],filter:720,gain:0.021,lfo:0.032,depth:140}
 };
 function setAudioSessionPlayback(){try{if(navigator.audioSession)navigator.audioSession.type="playback";}catch(e){}}
 function connectDirectOutput(){if(actx&&master&&!directOut){try{master.connect(actx.destination);directOut=true;}catch(e){}}}
@@ -307,7 +337,8 @@ function marimba(when,idx){if(!actx)return;const f=MNOTES[Math.min(idx,MNOTES.le
   g.gain.setValueAtTime(0,when);g.gain.linearRampToValueAtTime(0.075,when+0.008);g.gain.exponentialRampToValueAtTime(0.0004,when+0.55);
   o.connect(g).connect(cueBus);o2.connect(g2).connect(g);o.start(when);o2.start(when);o.stop(when+0.6);o2.stop(when+0.6);}
 function holdCue(dur,when){if(!actx)return;const n=Math.min(12,Math.floor(dur));for(let s=0;s<n;s++)marimba((when||actx.currentTime)+s+0.02,s);}
-function playPhaseCue(type,dur,when){if(type==="in")wash(dur,"in",when);else if(type==="out")wash(dur,"out",when);else holdCue(dur,when);}
+function bowl(when){if(!actx||!cueBus)return;const t=Math.max(actx.currentTime+0.015,when||actx.currentTime),o=trackSource(actx.createOscillator()),o2=trackSource(actx.createOscillator()),g=actx.createGain(),g2=actx.createGain();o.type="sine";o.frequency.value=110;o2.type="sine";o2.frequency.value=165;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.095,t+0.035);g.gain.exponentialRampToValueAtTime(0.0008,t+3.2);g2.gain.value=0.28;o.connect(g).connect(cueBus);o2.connect(g2).connect(g);o.start(t);o2.start(t);o.stop(t+3.4);o2.stop(t+3.4);}
+function playPhaseCue(type,dur,when,idx){if(pat.padAudio){if(type==="rest"||idx===0)bowl(when);return;}if(type==="in")wash(dur,"in",when);else if(type==="out")wash(dur,"out",when);else if(type==="rest")bowl(when);else holdCue(dur,when);}
 function startAmbientBed(){
   if(!actx||ambient)return;
   const cfg=AMBIENT[cat],mix=actx.createGain(),filter=actx.createBiquadFilter(),gain=actx.createGain(),lfo=actx.createOscillator(),depth=actx.createGain();
@@ -332,9 +363,15 @@ function updateAmbientTone(){
 }
 function updateAmbientBed(fade){
   if(!ambient||!actx)return;
-  const cfg=AMBIENT[cat],target=(running&&!paused)?((soundOn&&ambientOn)?cfg.gain:(needsPlaybackFloor()?AMBIENT_FLOOR:0)):0;
+  const cfg=AMBIENT[cat],target=(running&&!paused)?((soundOn&&(ambientOn||pat.padAudio))?cfg.gain:(needsPlaybackFloor()?AMBIENT_FLOOR:0)):0;
   const t=actx.currentTime;ambient.gain.gain.cancelScheduledValues(t);ambient.gain.gain.setValueAtTime(Math.max(0.00001,ambient.gain.gain.value),t);ambient.gain.gain.linearRampToValueAtTime(target,t+(fade==null?0.35:fade));
   syncAmbientNote();
+}
+function updateBreathPad(){
+  if(!ambient||!actx||!running||paused||!pat.padAudio)return;
+  const cfg=AMBIENT[cat],t=actx.currentTime,target=cfg.filter+breathOpen*300,gainTarget=soundOn?cfg.gain*(0.72+breathOpen*0.42):0;
+  try{ambient.filter.frequency.setTargetAtTime(target,t,0.18);}catch(e){}
+  try{ambient.gain.gain.setTargetAtTime(gainTarget,t,0.22);}catch(e){}
 }
 
 /* ---------- haptics (Android only; iOS Safari has no web vibration) ---------- */
@@ -375,40 +412,47 @@ function fmt(s){s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padS
 function cuePhase(type){
   if(type==="in")vibe(35);else if(type==="out")vibe([0,22,30,22]);else vibe(12);
 }
-function setHint(type){let h="";if(pat.id==="tummo"){h=type==="holdF"?"draw the belly in · warmth at your center":type==="in"?"full breath":"soft release";}$("hint").textContent=h;}
+function setHint(type){const bits=[];if(pat.rounds)bits.push("Round "+roundCount);if(type==="rest")bits.push("rest and notice");else if(pat.id==="tummo")bits.push(type==="holdF"?"draw the belly in · warmth at your center":type==="in"?"full breath":"soft release");$("hint").textContent=bits.join(" · ");}
 function showPhase(type,doVibe){$("word").textContent=WORDS[type]||" ";setHint(type);if(doVibe)cuePhase(type);}
 function enterPhase(i,startAt,doVibe){pIdx=i;pStart=startAt||performance.now();const[type]=phases[i];showPhase(type,doVibe!==false);scheduleAudioAhead();}
 function advancePhase(now){
   if(!running||paused||!phases.length)return;
   let changed=false;
-  while(running&&!paused&&phases.length&&(now-pStart)/1000>=phases[pIdx][1]){pStart+=phases[pIdx][1]*1000;pIdx=(pIdx+1)%phases.length;changed=true;}
+  while(running&&!paused&&phases.length&&(now-pStart)/1000>=phases[pIdx][1]){
+    pStart+=phases[pIdx][1]*1000;pIdx=(pIdx+1)%phases.length;changed=true;
+    if(pat.rounds&&pIdx===0){
+      if(pendingFinish||(durMin!=="inf"&&(now-sessStart)/1000>=durMin*60)){finish();return;}
+      roundCount++;
+    }
+  }
   if(changed){const[type]=phases[pIdx];showPhase(type,!document.hidden);scheduleAudioAhead();}
 }
 function updateSessionClock(now){
   if(!running||paused)return;
   const sess=(now-sessStart)/1000;
   if(durMin==="inf"){$("timer").textContent=fmt(sess);return;}
-  const left=durMin*60-sess;$("timer").textContent=fmt(left);if(left<=0)finish();
+  const left=durMin*60-sess;$("timer").textContent=fmt(left);
+  if(left<=0){if(pat.rounds){pendingFinish=true;$("timer").textContent="00:00";}else finish();}
 }
 function scheduleAudioAhead(){
   if(!actx||!running||paused||!phases.length)return;
   if(!soundOn){audioScheduleUntil=performance.now();return;}
-  const nowPerf=performance.now(),endPerf=durMin==="inf"?Infinity:sessStart+durMin*60000;
+  const nowPerf=performance.now(),endPerf=(durMin==="inf"||pat.rounds)?Infinity:sessStart+durMin*60000;
   let idx=pIdx,start=pStart,target=Math.max(audioScheduleUntil||nowPerf,nowPerf-30);
   while(start+phases[idx][1]*1000<=target){start+=phases[idx][1]*1000;idx=(idx+1)%phases.length;}
   const horizon=Math.min(nowPerf+AUDIO_SCHEDULE_AHEAD,endPerf);
   while(start<horizon){
     const[type,dur]=phases[idx],when=actx.currentTime+Math.max(0.02,(start-nowPerf)/1000);
-    playPhaseCue(type,dur,when);start+=dur*1000;idx=(idx+1)%phases.length;
+    playPhaseCue(type,dur,when,idx);start+=dur*1000;idx=(idx+1)%phases.length;
   }
   audioScheduleUntil=start;
 }
 async function acquireWakeLock(){try{if(!running||paused||document.hidden||!("wakeLock" in navigator))return;if(!wakeLock){wakeLock=await navigator.wakeLock.request("screen");wakeLock.addEventListener("release",()=>{wakeLock=null;});}}catch(e){}}
 async function releaseWakeLock(){if(wakeLock){try{await wakeLock.release();}catch(e){}wakeLock=null;}}
-function start(){phases=activePhases();if(!phases.length)return;const now=performance.now();running=true;paused=false;sessStart=now;audioScheduleUntil=now;stage.classList.add("running");stage.classList.remove("dim");$("pauseBtn").textContent="❚❚";audioResume().then(()=>scheduleAudioAhead());startAmbientBed();setMaster();setCueBus();updateAmbientBed(0.05);enterPhase(0,now,true);mediaMeta();mediaState(true);acquireWakeLock();}
+function start(){phases=activePhases();if(!phases.length)return;const now=performance.now();running=true;paused=false;pendingFinish=false;roundCount=1;sessStart=now;audioScheduleUntil=now;stage.classList.add("running");stage.classList.remove("dim");$("pauseBtn").textContent="❚❚";audioResume().then(()=>scheduleAudioAhead());startAmbientBed();setMaster();setCueBus();updateAmbientBed(0.05);enterPhase(0,now,true);mediaMeta();mediaState(true);acquireWakeLock();}
 function togglePause(){if(!running)return;if(!paused){paused=true;pauseAt=performance.now();$("pauseBtn").textContent="▶";setMaster();updateAmbientBed();mediaState(true);releaseWakeLock();setTimeout(()=>{if(paused&&actx){pauseMediaSink();try{if(actx.state==="running")actx.suspend();}catch(e){}}},220);}else{const now=performance.now(),g=now-pauseAt;pStart+=g;sessStart+=g;audioScheduleUntil=now;paused=false;$("pauseBtn").textContent="❚❚";audioResume().then(()=>scheduleAudioAhead());setMaster();setCueBus();startAmbientBed();updateAmbientBed(0.05);mediaState(true);acquireWakeLock();}}
-function finish(){running=false;paused=false;stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="complete";$("count").textContent="";$("hint").textContent="";setTimeout(()=>{if(!running)$("word").textContent="ready";},2600);}
-function end(){running=false;paused=false;stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="ready";$("count").textContent="";$("hint").textContent="";}
+function finish(){running=false;paused=false;pendingFinish=false;stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="complete";$("count").textContent="";$("hint").textContent="";setTimeout(()=>{if(!running)$("word").textContent="ready";},2600);}
+function end(){running=false;paused=false;pendingFinish=false;stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="ready";$("count").textContent="";$("hint").textContent="";}
 
 /* ---------- breath signal ---------- */
 function computeOpen(now){
@@ -437,6 +481,7 @@ function frame(now){
   prevDir=breathOpen-prevOpen;
   orb.style.transform="scale("+breathOpen.toFixed(4)+")";
   Mandala.draw(now/1000,breathOpen);
+  updateBreathPad();
   if(running&&now-lastMedia>500){lastMedia=now;mediaState();}
   prevOpen=breathOpen;rafId=requestAnimationFrame(frame);
 }
@@ -447,7 +492,7 @@ document.addEventListener("visibilitychange",()=>{if(document.hidden){cancelAnim
 
 /* ---------- sacred-geometry mandalas (breath-driven, subtle) ---------- */
 const Mandala=(()=>{
-  const GROUND={calm:["#0a0c20","#05030f"],intimacy:["#1a0814","#0c0308"],energy:["#0e1206","#070803"]};
+  const GROUND={calm:["#0a0c20","#05030f"],intimacy:["#1a0814","#0c0308"],energy:["#0e1206","#070803"],holotropic:["#0c0a22","#05030f"]};
   const VIS={
     coherent:{type:"rings",sym:12,col:["#5a7cff","#8a6cff","#46c8ff"],rot:0.05},
     box:{type:"flower",col:["#5b6cff","#7b5cff","#46a8ff"],rot:0.03},
@@ -457,7 +502,10 @@ const Mandala=(()=>{
     grounding:{type:"rings",sym:8,col:["#ff7aa6","#e85cc0","#ffb0d2"],rot:0.03},
     fire:{type:"sunburst",sym:40,col:["#ffd23a","#ffe96b","#ff9a3a"],rot:0.06},
     tummo:{type:"rings",sym:8,col:["#ffd23a","#bfe04a","#ffe96b"],rot:0.035},
-    bellows:{type:"polygons",sides:8,layers:7,col:["#ffe96b","#9fe04a","#d8ff6b"],rot:0.09}
+    bellows:{type:"polygons",sides:8,layers:7,col:["#ffe96b","#9fe04a","#d8ff6b"],rot:0.09},
+    connected:{type:"spiral",arms:5,col:["#9a6cff","#ff5ac8","#42d8ff"],rot:0.035},
+    holotropic:{type:"flower",col:["#9a6cff","#ff5ac8","#42d8ff"],rot:0.028},
+    expansive:{type:"sunburst",sym:48,col:["#42d8ff","#c86cff","#ff5ac8"],rot:0.045}
   };
   const hex=(c,a)=>c+Math.round(Math.max(0,Math.min(1,a))*255).toString(16).padStart(2,"0");
   const motionScale=reduce?0.4:1;
@@ -499,9 +547,9 @@ const Mandala=(()=>{
 })();
 
 /* ---------- wiring ---------- */
-$("begin").onclick=()=>{if(CATS[cat].safety&&!safetyOK){$("gate").classList.add("on");return;}start();};
-$("gateGo").onclick=()=>{safetyOK=true;$("gate").classList.remove("on");start();};
-$("gateBack").onclick=()=>$("gate").classList.remove("on");
+$("begin").onclick=()=>{if(needsSafetyGate()){openSafetyGate();return;}start();};
+$("gateGo").onclick=()=>{if(activeGateMode!=="holotropicAlways")safetyOK=true;$("gate").classList.remove("on");start();activeGateMode=null;};
+$("gateBack").onclick=()=>{$("gate").classList.remove("on");activeGateMode=null;};
 $("pauseBtn").onclick=togglePause;$("endBtn").onclick=end;
 $("soundTg").onclick=()=>{soundOn=!soundOn;writeStore(STORE.sound,String(soundOn));$("soundTg").setAttribute("aria-pressed",soundOn);audioResume();setCueBus();updateAmbientBed();if(soundOn){audioScheduleUntil=performance.now();scheduleAudioAhead();}else stopTrackedAudio();};
 $("hapticTg").onclick=()=>setHaptics(!hapticOn);
