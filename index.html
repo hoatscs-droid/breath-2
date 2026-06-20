@@ -34,7 +34,7 @@
   .eyebrow{text-align:center;flex:1;transition:opacity .8s var(--ease)}
   .eyebrow .cat{font-size:11px;letter-spacing:.44em;text-transform:uppercase;color:var(--eyebrow);font-weight:600}
   .eyebrow .tag{margin-top:6px;font-size:12px;color:rgba(232,234,255,.4);font-style:italic;font-family:"Iowan Old Style",Palatino,Georgia,serif}
-  .toggles{position:absolute;right:16px;top:max(22px,env(safe-area-inset-top));display:flex;gap:8px;z-index:6}
+  .toggles{position:absolute;right:16px;top:calc(max(22px,env(safe-area-inset-top)) + 42px);display:flex;gap:8px;z-index:6}
   .tg{width:34px;height:34px;border-radius:50%;border:1px solid var(--hair);background:rgba(220,224,255,.04);color:rgba(232,234,255,.55);font-size:14px;cursor:pointer;display:grid;place-items:center;transition:all .3s var(--ease)}
   .tg[hidden]{display:none}
   .tg:disabled{cursor:default;opacity:.38}
@@ -197,7 +197,7 @@ const CATS={
       {id:"tummo",n:"Tummo",d:"rounds · vase hold",how:"Rounds of forceful breathing to build inner heat, each round ending in a held breath drawn down to the belly. An activating practice — please read the safety note first.",ph:tummoPhases(),range:[.5,1],rounds:true},
       {id:"bellows",n:"Bellows",d:"1.2 · 1.2",how:"Full, brisk breaths in and out through the nose to raise heat and alertness. Ease off the moment you feel lightheaded.",ph:[["in",1.2],["out",1.2]],range:[.72,1]}]},
   holotropic:{label:"Holotropic",tag:"non-ordinary states through breath",
-    note:"High-ventilation breathing deliberately lowers carbon dioxide to bring on a non-ordinary, sometimes dreamlike or euphoric state. That state is a real but temporary shift in body chemistry — not a drug, and not therapy. The full practice is normally done over hours with a trained facilitator; this is a short, gentle solo taste. Read the safety screen first.",
+    note:"High-ventilation can bring on temporary tingling, lightness, or dreamlike shifts. This is a short solo taste, not therapy; read the safety screen first.",
     vars:{"--bg-0":"#0a0618","--bg-1":"#05030f","--core":"#e8d6ff","--body":"#9a6cff","--rim":"#2a1466","--glow":"#7b4cff","--text":"#ece0ff","--eyebrow":"#b49ad0"},
     patterns:[
       {id:"connected",n:"Connected",d:"3 · 3",how:"Continuous, connected breathing with no pause between in and out — deep and a little faster than normal. A gentle on-ramp.",ph:[["in",3],["out",3]],range:[.54,.96],safety:"holotropic",padAudio:true},
