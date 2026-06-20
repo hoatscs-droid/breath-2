@@ -31,10 +31,10 @@
   #stage[data-visual="off"]::before,#stage[data-visual="off"]::after{display:none}
 
   .topbar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:max(24px,env(safe-area-inset-top)) 18px 0}
-  .eyebrow{text-align:center;flex:1;transition:opacity .8s var(--ease)}
-  .eyebrow .cat{font-size:11px;letter-spacing:.44em;text-transform:uppercase;color:var(--eyebrow);font-weight:600}
-  .eyebrow .tag{margin-top:6px;font-size:12px;color:rgba(232,234,255,.4);font-style:italic;font-family:"Iowan Old Style",Palatino,Georgia,serif}
-  #stage[data-cat="holotropic"] .eyebrow .cat{letter-spacing:.38em}
+  .eyebrow{text-align:center;flex:1;transform:translateY(clamp(68px,11dvh,100px));transition:opacity .8s var(--ease)}
+  .eyebrow .cat{font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:var(--eyebrow);font-weight:650}
+  .eyebrow .tag{margin-top:7px;font-size:14px;color:rgba(232,234,255,.46);font-style:italic;font-family:"Iowan Old Style",Palatino,Georgia,serif}
+  #stage[data-cat="holotropic"] .eyebrow .cat{letter-spacing:.34em}
   .toggles{position:absolute;right:16px;top:max(22px,env(safe-area-inset-top));display:flex;gap:8px;z-index:6}
   .tg{width:34px;height:34px;border-radius:50%;border:1px solid var(--hair);background:rgba(220,224,255,.04);color:rgba(232,234,255,.55);font-size:14px;cursor:pointer;display:grid;place-items:center;transition:all .3s var(--ease)}
   .tg[hidden]{display:none}
@@ -112,7 +112,6 @@
 
   @media (prefers-reduced-motion: reduce){.orb::after{animation:none}}
   @media (max-width:360px){
-    #stage[data-cat="holotropic"] .eyebrow{transform:translateX(-40px)}
     .tabs{gap:5px}
     .tab{font-size:8.5px;letter-spacing:.035em}
   }
@@ -134,7 +133,6 @@
   </div>
   <div class="toggles">
     <button class="tg" id="soundTg" aria-pressed="true" aria-label="Sound" title="Sound">♪</button>
-    <button class="tg" id="hapticTg" aria-pressed="false" aria-label="Haptics" title="Haptics">⊚</button>
     <button class="tg" id="settingsTg" aria-label="Settings" title="Settings">⚙</button>
   </div>
 
@@ -214,12 +212,11 @@ const WORDS={in:"breathe in",holdF:"hold",out:"breathe out",holdE:"hold",rest:"r
 const DURS=[3,5,10,"inf"];
 
 /* ---------- state ---------- */
-const STORE={sound:"breath.soundOn",haptic:"breath.hapticOn",ambient:"breath.ambientOn",visual:"breath.visualMode",autoVisual:"breath.visualAutoDowngraded"};
+const STORE={sound:"breath.soundOn",ambient:"breath.ambientOn",visual:"breath.visualMode",autoVisual:"breath.visualAutoDowngraded"};
 const VISUAL_MODES=["full","minimal","off"];
 function readStore(k,fallback){try{const v=localStorage.getItem(k);return v===null?fallback:v;}catch(e){return fallback;}}
 function writeStore(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 function readBool(k,fallback){const v=readStore(k,null);return v===null?fallback:v==="true";}
-function supportsHaptics(){return typeof navigator.vibrate==="function";}
 let cat="calm",pat=CATS.calm.patterns[0],durMin=5;
 let running=false,paused=false,safetyOK=false;
 let phases=[],pIdx=0,pStart=0,sessStart=0,pauseAt=0;
@@ -228,7 +225,7 @@ let cycleMs=0,cyclesTotal=Infinity,plannedEndMs=Infinity;
 let breathOpen=0,prevOpen=0,prevDir=0,idleT=0,lastNow=0;
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 let audioScheduleUntil=0,bgTimer=0,wakeLock=null,lastFrameSample=0,slowFrameMs=0,visualAutoQuietUntil=0;
-let soundOn=readBool(STORE.sound,true),hapticOn=supportsHaptics()?readBool(STORE.haptic,false):false,ambientOn=readBool(STORE.ambient,true);
+let soundOn=readBool(STORE.sound,true),ambientOn=readBool(STORE.ambient,true);
 const _storedVisual=readStore(STORE.visual,null),_visualWasAuto=readBool(STORE.autoVisual,false);
 const _discardAutoVisual=_visualWasAuto&&_storedVisual==="minimal";
 let visualMode=(_storedVisual&&VISUAL_MODES.includes(_storedVisual)&&!_discardAutoVisual)?_storedVisual:"full";
@@ -381,21 +378,7 @@ function updateBreathPad(){
   try{ambient.gain.gain.setTargetAtTime(gainTarget,t,0.22);}catch(e){}
 }
 
-/* ---------- haptics (Android only; iOS Safari has no web vibration) ---------- */
-function updateHapticControl(){
-  const b=$("hapticTg");if(!b)return;
-  const ok=supportsHaptics();
-  if(!ok)hapticOn=false;
-  b.hidden=false;b.disabled=!ok;
-  b.setAttribute("aria-pressed",String(ok&&hapticOn));
-  b.setAttribute("aria-label",ok?"Haptics":"Haptics unavailable on this device");
-  b.title=ok?(hapticOn?"Haptics on":"Haptics"):"Haptics unavailable on this device";
-}
-function setHaptics(on){
-  if(!supportsHaptics()){hapticOn=false;writeStore(STORE.haptic,"false");updateHapticControl();return;}
-  hapticOn=!!on;writeStore(STORE.haptic,String(hapticOn));updateHapticControl();if(hapticOn)vibe(20);
-}
-function vibe(p){if(!hapticOn||!supportsHaptics())return;try{navigator.vibrate(p);}catch(e){}}
+function vibe(){}
 
 /* ---------- Media Session (lock-screen controls + timeline scaffolding) ---------- */
 function mediaSetup(){if(!("mediaSession" in navigator))return;try{
@@ -570,7 +553,6 @@ $("gateGo").onclick=()=>{if(activeGateMode!=="holotropicAlways")safetyOK=true;$(
 $("gateBack").onclick=()=>{$("gate").classList.remove("on");activeGateMode=null;};
 $("pauseBtn").onclick=togglePause;$("endBtn").onclick=end;
 $("soundTg").onclick=()=>{soundOn=!soundOn;writeStore(STORE.sound,String(soundOn));$("soundTg").setAttribute("aria-pressed",soundOn);audioResume();setCueBus();updateAmbientBed();if(soundOn){audioScheduleUntil=performance.now();scheduleAudioAhead();}else stopTrackedAudio();};
-$("hapticTg").onclick=()=>setHaptics(!hapticOn);
 function openSettings(){$("settingsSheet").classList.add("on");$("settingsSheet").setAttribute("aria-hidden","false");}
 function closeSettings(){$("settingsSheet").classList.remove("on");$("settingsSheet").setAttribute("aria-hidden","true");}
 $("settingsTg").onclick=openSettings;
@@ -580,7 +562,6 @@ addEventListener("keydown",e=>{if(e.key==="Escape")closeSettings();});
 $("orb").parentElement.addEventListener("click",()=>{if(running)stage.classList.toggle("dim");});
 
 $("soundTg").setAttribute("aria-pressed",soundOn);
-updateHapticControl();
 resize();paintCat();buildTabs();buildChips();buildDur();buildAmbient();buildVisuals();setPname();mediaSetup();mediaState(true);visualAutoQuietUntil=performance.now()+8000;rafId=requestAnimationFrame(frame);
 </script>
 </body>
