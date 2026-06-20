@@ -34,7 +34,8 @@
   .eyebrow{text-align:center;flex:1;transition:opacity .8s var(--ease)}
   .eyebrow .cat{font-size:11px;letter-spacing:.44em;text-transform:uppercase;color:var(--eyebrow);font-weight:600}
   .eyebrow .tag{margin-top:6px;font-size:12px;color:rgba(232,234,255,.4);font-style:italic;font-family:"Iowan Old Style",Palatino,Georgia,serif}
-  .toggles{position:absolute;right:16px;top:calc(max(22px,env(safe-area-inset-top)) + 42px);display:flex;gap:8px;z-index:6}
+  #stage[data-cat="holotropic"] .eyebrow .cat{letter-spacing:.38em}
+  .toggles{position:absolute;right:16px;top:max(22px,env(safe-area-inset-top));display:flex;gap:8px;z-index:6}
   .tg{width:34px;height:34px;border-radius:50%;border:1px solid var(--hair);background:rgba(220,224,255,.04);color:rgba(232,234,255,.55);font-size:14px;cursor:pointer;display:grid;place-items:center;transition:all .3s var(--ease)}
   .tg[hidden]{display:none}
   .tg:disabled{cursor:default;opacity:.38}
@@ -110,6 +111,11 @@
   .sheet-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--hair);background:transparent;color:rgba(232,234,255,.7);font-size:18px;line-height:1;cursor:pointer}
 
   @media (prefers-reduced-motion: reduce){.orb::after{animation:none}}
+  @media (max-width:360px){
+    #stage[data-cat="holotropic"] .eyebrow{transform:translateX(-40px)}
+    .tabs{gap:5px}
+    .tab{font-size:8.5px;letter-spacing:.035em}
+  }
   @media (max-height:760px){
     .orb{width:min(44vw,188px)}
     .cue .word{font-size:22px}.cue .count{font-size:26px;min-height:28px}.cue .hint{margin-top:7px}
@@ -196,7 +202,7 @@ const CATS={
       {id:"fire",n:"Breath Of Fire",d:"rapid · even",how:"A rapid, even breath through the nose, driven from the belly with the emphasis on a quick exhale. Strongly energizing — keep it brief, a minute or two.",ph:[["in",.9],["out",.9]],range:[.78,1]},
       {id:"tummo",n:"Tummo",d:"rounds · vase hold",how:"Rounds of forceful breathing to build inner heat, each round ending in a held breath drawn down to the belly. An activating practice — please read the safety note first.",ph:tummoPhases(),range:[.5,1],rounds:true},
       {id:"bellows",n:"Bellows",d:"1.2 · 1.2",how:"Full, brisk breaths in and out through the nose to raise heat and alertness. Ease off the moment you feel lightheaded.",ph:[["in",1.2],["out",1.2]],range:[.72,1]}]},
-  holotropic:{label:"Holotropic",tag:"non-ordinary states through breath",
+  holotropic:{label:"Holotropic",tag:"non-ordinary states",
     note:"High-ventilation can bring on temporary tingling, lightness, or dreamlike shifts. This is a short solo taste, not therapy; read the safety screen first.",
     vars:{"--bg-0":"#0a0618","--bg-1":"#05030f","--core":"#e8d6ff","--body":"#9a6cff","--rim":"#2a1466","--glow":"#7b4cff","--text":"#ece0ff","--eyebrow":"#b49ad0"},
     patterns:[
@@ -218,6 +224,7 @@ let cat="calm",pat=CATS.calm.patterns[0],durMin=5;
 let running=false,paused=false,safetyOK=false;
 let phases=[],pIdx=0,pStart=0,sessStart=0,pauseAt=0;
 let pendingFinish=false,roundCount=1;
+let cycleMs=0,cyclesTotal=Infinity,plannedEndMs=Infinity;
 let breathOpen=0,prevOpen=0,prevDir=0,idleT=0,lastNow=0;
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 let audioScheduleUntil=0,bgTimer=0,wakeLock=null,lastFrameSample=0,slowFrameMs=0,visualAutoQuietUntil=0;
@@ -401,7 +408,7 @@ function mediaMeta(){if(!("mediaSession" in navigator)||typeof MediaMetadata==="
 function mediaState(force){if(!("mediaSession" in navigator))return;try{navigator.mediaSession.playbackState=running?(paused?"paused":"playing"):"none";}catch(e){}
   if(typeof navigator.mediaSession.setPositionState!=="function")return;
   try{
-    if(running&&durMin!=="inf"){const dur=durMin*60,pos=Math.min(dur,Math.max(0,(performance.now()-sessStart)/1000));navigator.mediaSession.setPositionState({duration:dur,playbackRate:1,position:pos});}
+    if(running&&durMin!=="inf"){const dur=Math.max(1,(plannedEndMs-sessStart)/1000),pos=Math.min(dur,Math.max(0,(performance.now()-sessStart)/1000));navigator.mediaSession.setPositionState({duration:dur,playbackRate:1,position:pos});}
     else if(force){navigator.mediaSession.setPositionState();}
   }catch(e){}}
 
@@ -420,8 +427,8 @@ function advancePhase(now){
   let changed=false;
   while(running&&!paused&&phases.length&&(now-pStart)/1000>=phases[pIdx][1]){
     pStart+=phases[pIdx][1]*1000;pIdx=(pIdx+1)%phases.length;changed=true;
-    if(pat.rounds&&pIdx===0){
-      if(pendingFinish||(durMin!=="inf"&&(now-sessStart)/1000>=durMin*60)){finish();return;}
+    if(pIdx===0){
+      if(durMin!=="inf"&&roundCount>=cyclesTotal){finish();return;}
       roundCount++;
     }
   }
@@ -429,15 +436,13 @@ function advancePhase(now){
 }
 function updateSessionClock(now){
   if(!running||paused)return;
-  const sess=(now-sessStart)/1000;
-  if(durMin==="inf"){$("timer").textContent=fmt(sess);return;}
-  const left=durMin*60-sess;$("timer").textContent=fmt(left);
-  if(left<=0){if(pat.rounds){pendingFinish=true;$("timer").textContent="00:00";}else finish();}
+  if(durMin==="inf"){$("timer").textContent=fmt((now-sessStart)/1000);return;}
+  $("timer").textContent=fmt(Math.max(0,(plannedEndMs-now)/1000));
 }
 function scheduleAudioAhead(){
   if(!actx||!running||paused||!phases.length)return;
   if(!soundOn){audioScheduleUntil=performance.now();return;}
-  const nowPerf=performance.now(),endPerf=(durMin==="inf"||pat.rounds)?Infinity:sessStart+durMin*60000;
+  const nowPerf=performance.now(),endPerf=(durMin==="inf")?Infinity:plannedEndMs;
   let idx=pIdx,start=pStart,target=Math.max(audioScheduleUntil||nowPerf,nowPerf-30);
   while(start+phases[idx][1]*1000<=target){start+=phases[idx][1]*1000;idx=(idx+1)%phases.length;}
   const horizon=Math.min(nowPerf+AUDIO_SCHEDULE_AHEAD,endPerf);
@@ -449,10 +454,23 @@ function scheduleAudioAhead(){
 }
 async function acquireWakeLock(){try{if(!running||paused||document.hidden||!("wakeLock" in navigator))return;if(!wakeLock){wakeLock=await navigator.wakeLock.request("screen");wakeLock.addEventListener("release",()=>{wakeLock=null;});}}catch(e){}}
 async function releaseWakeLock(){if(wakeLock){try{await wakeLock.release();}catch(e){}wakeLock=null;}}
-function start(){phases=activePhases();if(!phases.length)return;const now=performance.now();running=true;paused=false;pendingFinish=false;roundCount=1;sessStart=now;audioScheduleUntil=now;stage.classList.add("running");stage.classList.remove("dim");$("pauseBtn").textContent="❚❚";audioResume().then(()=>scheduleAudioAhead());startAmbientBed();setMaster();setCueBus();updateAmbientBed(0.05);enterPhase(0,now,true);mediaMeta();mediaState(true);acquireWakeLock();}
-function togglePause(){if(!running)return;if(!paused){paused=true;pauseAt=performance.now();$("pauseBtn").textContent="▶";setMaster();updateAmbientBed();mediaState(true);releaseWakeLock();setTimeout(()=>{if(paused&&actx){pauseMediaSink();try{if(actx.state==="running")actx.suspend();}catch(e){}}},220);}else{const now=performance.now(),g=now-pauseAt;pStart+=g;sessStart+=g;audioScheduleUntil=now;paused=false;$("pauseBtn").textContent="❚❚";audioResume().then(()=>scheduleAudioAhead());setMaster();setCueBus();startAmbientBed();updateAmbientBed(0.05);mediaState(true);acquireWakeLock();}}
-function finish(){running=false;paused=false;pendingFinish=false;stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="complete";$("count").textContent="";$("hint").textContent="";setTimeout(()=>{if(!running)$("word").textContent="ready";},2600);}
-function end(){running=false;paused=false;pendingFinish=false;stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="ready";$("count").textContent="";$("hint").textContent="";}
+function planSession(now){
+  cycleMs=phases.reduce((s,p)=>s+p[1],0)*1000;
+  if(durMin==="inf"){cyclesTotal=Infinity;plannedEndMs=Infinity;return;}
+  const n=Math.max(1,Math.round((durMin*60000)/cycleMs));
+  cyclesTotal=n;plannedEndMs=now+n*cycleMs;
+}
+function resetSessionPlan(){cycleMs=0;cyclesTotal=Infinity;plannedEndMs=Infinity;}
+function start(){
+  phases=activePhases();if(!phases.length)return;
+  const now=performance.now();
+  running=true;paused=false;pendingFinish=false;roundCount=1;sessStart=now;planSession(now);audioScheduleUntil=now;
+  stage.classList.add("running");stage.classList.remove("dim");$("pauseBtn").textContent="❚❚";
+  audioResume().then(()=>scheduleAudioAhead());startAmbientBed();setMaster();setCueBus();updateAmbientBed(0.05);enterPhase(0,now,true);mediaMeta();mediaState(true);acquireWakeLock();
+}
+function togglePause(){if(!running)return;if(!paused){paused=true;pauseAt=performance.now();$("pauseBtn").textContent="▶";setMaster();updateAmbientBed();mediaState(true);releaseWakeLock();setTimeout(()=>{if(paused&&actx){pauseMediaSink();try{if(actx.state==="running")actx.suspend();}catch(e){}}},220);}else{const now=performance.now(),g=now-pauseAt;pStart+=g;sessStart+=g;if(plannedEndMs!==Infinity)plannedEndMs+=g;audioScheduleUntil=now;paused=false;$("pauseBtn").textContent="❚❚";audioResume().then(()=>scheduleAudioAhead());setMaster();setCueBus();startAmbientBed();updateAmbientBed(0.05);mediaState(true);acquireWakeLock();}}
+function finish(){running=false;paused=false;pendingFinish=false;resetSessionPlan();stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="complete";$("count").textContent="";$("hint").textContent="";setTimeout(()=>{if(!running)$("word").textContent="ready";},2600);}
+function end(){running=false;paused=false;pendingFinish=false;resetSessionPlan();stage.classList.remove("running");stopTrackedAudio();stopAmbientBed();setMaster();updateAmbientBed();pauseMediaSink();releaseWakeLock();mediaState(true);$("word").textContent="ready";$("count").textContent="";$("hint").textContent="";}
 
 /* ---------- breath signal ---------- */
 function computeOpen(now){
